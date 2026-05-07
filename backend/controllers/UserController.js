@@ -131,9 +131,15 @@ module.exports = class UserController {
 
     static async editUser(req, res) {
         const token = getToken(req)
+
+
         const user = await getUserByToken(token)
 
-        const { name, email, phone, password, confirmpassword } = req.body
+        const name = req.body.name
+        const email = req.body.email
+        const phone = req.body.phone
+        const password = req.body.password
+        const confirmpassword = req.body.confirmpassword
 
         let image = ''
 
@@ -142,35 +148,62 @@ module.exports = class UserController {
         }
 
         if (!name) {
-            res.status(422).json({ message: 'Nome é obrigatório' })
+            res.status(422).json({ message: 'O nome é obrigatório!' })
             return
         }
+
         user.name = name
 
         if (!email) {
-            res.status(422).json({ message: 'Email é obrigatório' })
-            return
-        }
-
-        if (!phone) {
-            res.status(422).json({ message: 'Telefone é obrigatório' })
+            res.status(422).json({ message: 'O e-mail é obrigatório!' })
             return
         }
 
         const userExists = await User.findOne({ email: email })
 
         if (user.email !== email && userExists) {
-            res.status(422).json({
-                message: 'Existe um problema de chave e-mail com a edição.'
-            })
+            res.status(422).json({ message: 'Por favor, utilize outro e-mail!' })
             return
         }
 
         user.email = email
 
-        if (password !== confirmpassword) {
-            res.status(422).json({ message: 'As senhas não coincidem' })
+        if (image) {
+            const imageName = req.file.filename
+            user.image = imageName
+        }
+
+        if (!phone) {
+            res.status(422).json({ message: 'O telefone é obrigatório!' })
             return
+        }
+
+        user.phone = phone
+
+        if (password != confirmpassword) {
+            res.status(422).json({ error: 'As senhas não conferem.' })
+
+        } else if (password == confirmpassword && password != null) {
+            const salt = await bcrypt.genSalt(12)
+            const reqPassword = req.body.password
+
+            const passwordHash = await bcrypt.hash(reqPassword, salt)
+
+            user.password = passwordHash
+        }
+
+        try {
+            const updatedUser = await User.findOneAndUpdate(
+                { _id: user._id },
+                { $set: user },
+                { new: true },
+            )
+            res.json({
+                message: 'Usuário atualizado com sucesso!',
+                data: updatedUser,
+            })
+        } catch (error) {
+            res.status(500).json({ message: error })
         }
     }
 
