@@ -2,6 +2,8 @@ const Pet = require('../models/Pet')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 
+const mongoose = require('mongoose')
+
 const getToken = require('../helpers/get-tokens')
 const getUserByToken = require('../helpers/get-user-by-token')
 
@@ -100,11 +102,56 @@ module.exports = class PetController {
     }
 
     static async getPetById(req, res) {
-        res.status(200).json({ message: "Em breve..." })
+        const id = req.params.id
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            res.status(422).json({ message: "O id do pet é inválido." })
+            return
+        }
+
+
+        try {
+            const pet = await Pet.findById(id)
+
+            if (!pet) {
+                res.status(404).json({ message: "Pet não encontrado." })
+                return
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: pet
+            })
+
+        } catch (error) {
+            res.status(503).json({ message: error })
+        }
+
+
     }
 
     static async removePetById(req, res) {
-        res.status(200).json({ message: "Em breve..." })
+        const id = req.params.id
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(422).json({ message: "O id do pet é inválido." })
+        }
+
+        const pet = await Pet.findById(id)
+
+        if (!pet) {
+            return res.status(404).json({ message: "Pet não encontrado." })
+        }
+
+        const token = getToken(req)
+        const user = await getUserByToken(token)
+
+        if (pet.user._id.toString() !== user._id.toString()) {
+            return res.status(401).json({ message: "Não autorizado, você não é o dono do pet." })
+        }
+
+        await Pet.findByIdAndDelete(id)
+        return res.status(200).json({ message: "Pet removido com sucesso", data: pet })
     }
 
     static async updatePet(req, res) {
