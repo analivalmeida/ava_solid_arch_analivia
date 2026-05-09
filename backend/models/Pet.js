@@ -32,6 +32,10 @@ const Pet = mongoose.model(
             user: {
                 type: Object,
                 adopter: Object
+            },
+            adopter: {
+                type: Object,
+                required: false
             }
         },
         {
